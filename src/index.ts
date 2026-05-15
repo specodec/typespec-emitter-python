@@ -36,8 +36,8 @@ function typeToPython(type: Type, optional: boolean = false): string {
   else if (["float32", "float64", "float", "decimal"].includes(n)) base = "float";
   else if (n === "bytes") base = "bytes";
   else if (type.kind === "Enum") base = "str";
-  else if (isArrayType(type)) base = `list[${typeToPython(arrayElementType(type))}]`;
-  else if (isRecordType(type)) base = `dict[str, ${typeToPython(recordElementType(type))}]`;
+  else if (isArrayType(type)) base = `list[${typeToPython(arrayElementType(type)!)}]`;
+  else if (isRecordType(type)) base = `dict[str, ${typeToPython(recordElementType(type)!)}]`;
   else if (type.kind === "Model" && (type as Model).name) base = (type as Model).name;
   else if (type.kind === "Union") base = (type as Union).name!;
   else base = "Any";
@@ -56,7 +56,7 @@ function writeLines(type: Type, varExpr: string, indent: string): string[] {
   if (["float64", "float", "decimal"].includes(n)) return [`${indent}w.write_float64(float(${varExpr}))`];
   if (n === "bytes") return [`${indent}w.write_bytes(${varExpr})`];
   if (isArrayType(type)) {
-    const elem = arrayElementType(type);
+    const elem = arrayElementType(type)!;
     return [
       `${indent}w.begin_array(len(${varExpr}))`,
       `${indent}for item in ${varExpr}:`,
@@ -66,7 +66,7 @@ function writeLines(type: Type, varExpr: string, indent: string): string[] {
     ];
   }
   if (isRecordType(type)) {
-    const elem = recordElementType(type);
+    const elem = recordElementType(type)!;
     return [
       `${indent}w.begin_object(len(${varExpr}))`,
       `${indent}for key, val in ${varExpr}.items():`,
@@ -96,13 +96,13 @@ function readExpr(type: Type, optional?: boolean): string {
   if (["float64", "float", "decimal"].includes(n)) return `r.read_float64()`;
   if (n === "bytes") return `r.read_bytes()`;
   if (isArrayType(type)) {
-    const elem = arrayElementType(type);
+    const elem = arrayElementType(type)!;
     const arrExpr = `(lambda: (result := [], r.begin_array(), [result.append(${readExpr(elem)}) for _ in iter(r.has_next_element, False)], r.end_array(), result)[-1])()`;
     if (optional) return `r.read_null() if r.is_null() else ${arrExpr}`;
     return arrExpr;
   }
   if (isRecordType(type)) {
-    const elem = recordElementType(type);
+    const elem = recordElementType(type)!;
     const mapExpr = `(lambda: (result := {}, r.begin_object(), [result.__setitem__(r.read_field_name(), ${readExpr(elem)}) for _ in iter(r.has_next_field, False)], r.end_object(), result)[-1])()`;
     if (optional) return `r.read_null() if r.is_null() else ${mapExpr}`;
     return mapExpr;
@@ -270,8 +270,8 @@ export async function $onEmit(context: EmitContext<EmitterOptions>) {
             const ns = pyModelNs.get((t as any).name);
             if (ns && ns !== svc.serviceName) xrefNs.add(dottedPathToSnakeCase(ns));
           }
-          if (isArrayType(t)) collectX(arrayElementType(t));
-          if (isRecordType(t)) collectX(recordElementType(t));
+          if (isArrayType(t)) collectX(arrayElementType(t)!);
+          if (isRecordType(t)) collectX(recordElementType(t)!);
         };
         collectX(f.type);
       }
@@ -283,8 +283,8 @@ export async function $onEmit(context: EmitContext<EmitterOptions>) {
             const ns = pyModelNs.get((t as any).name);
             if (ns && ns !== svc.serviceName) xrefNs.add(dottedPathToSnakeCase(ns));
           }
-          if (isArrayType(t)) collectX(arrayElementType(t)!);
-          if (isRecordType(t)) collectX(recordElementType(t)!);
+          if (isArrayType(t)) collectX(arrayElementType(t)!!);
+          if (isRecordType(t)) collectX(recordElementType(t)!!);
         };
         collectX(v.type);
       }
